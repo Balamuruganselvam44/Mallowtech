@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getUsers, createUser, updateUser, deleteUser } from '../../services/api';
+import { getUsers, getAllUsers, createUser, updateUser, deleteUser } from '../../services/api';
 
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
@@ -9,6 +9,18 @@ export const fetchUsers = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch users');
+    }
+  }
+);
+
+export const searchAllUsers = createAsyncThunk(
+  'users/searchAllUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const allUsers = await getAllUsers();
+      return allUsers;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to search users');
     }
   }
 );
@@ -51,12 +63,14 @@ export const removeUser = createAsyncThunk(
 
 const initialState = {
   users: [],
+  allUsers: [],
   totalPages: 0,
   currentPage: 1,
   loading: false,
   error: null,
   searchQuery: '',
-  viewMode: 'table', // 'table' or 'card'
+  viewMode: 'table',
+  isSearching: false,
 };
 
 const userSlice = createSlice({
@@ -65,6 +79,10 @@ const userSlice = createSlice({
   reducers: {
     setSearchQuery: (state, action) => {
       state.searchQuery = action.payload;
+      if (!action.payload) {
+        state.isSearching = false;
+        state.allUsers = [];
+      }
     },
     toggleViewMode: (state) => {
       state.viewMode = state.viewMode === 'table' ? 'card' : 'table';
@@ -90,6 +108,20 @@ const userSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // Search All Users
+      .addCase(searchAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(searchAllUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.allUsers = action.payload;
+        state.isSearching = true;
+      })
+      .addCase(searchAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // Add User
       .addCase(addUser.fulfilled, (state, action) => {
         state.users.push(action.payload);
@@ -112,11 +144,14 @@ export const { setSearchQuery, toggleViewMode, clearError } = userSlice.actions;
 
 // Selectors
 export const selectFilteredUsers = (state) => {
-  const { users, searchQuery } = state.users;
+  const { users, allUsers, searchQuery, isSearching } = state.users;
+
   if (!searchQuery) return users;
+
+  const usersToFilter = isSearching ? allUsers : users;
   
   const query = searchQuery.toLowerCase();
-  return users.filter((user) => 
+  return usersToFilter.filter((user) => 
     user.first_name?.toLowerCase().includes(query) ||
     user.last_name?.toLowerCase().includes(query) ||
     user.email?.toLowerCase().includes(query)
