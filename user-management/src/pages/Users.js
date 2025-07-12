@@ -27,6 +27,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { logout } from '../redux/slices/authSlice';
 import {
   fetchUsers,
+  searchAllUsers,
   addUser,
   editUser,
   removeUser,
@@ -46,6 +47,7 @@ const Users = () => {
     viewMode,
     currentPage,
     totalPages,
+    isSearching,
   } = useSelector((state) => state.users);
   
   const filteredUsers = useSelector(selectFilteredUsers);
@@ -66,7 +68,11 @@ const Users = () => {
   }, [dispatch, currentPage]);
 
   const handleSearch = (e) => {
-    dispatch(setSearchQuery(e.target.value));
+    const query = e.target.value;
+    dispatch(setSearchQuery(query));
+    if (query.trim()) {
+      dispatch(searchAllUsers());
+    }
   };
 
   const handlePageChange = (_, page) => {
@@ -226,27 +232,29 @@ const Users = () => {
           cancelText="Cancel"
         />
       </Container>
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          width: '100%',
-          bgcolor: 'background.paper',
-          py: 2,
-          display: 'flex',
-          justifyContent: 'center',
-          boxShadow: 3,
-          zIndex: 1201,
-        }}
-      >
-        <Pagination
-          count={totalPages}
-          page={currentPage}
-          onChange={handlePageChange}
-          color="primary"
-        />
-      </Box>
+      {!isSearching && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            bgcolor: 'background.paper',
+            py: 2,
+            display: 'flex',
+            justifyContent: 'center',
+            boxShadow: 3,
+            zIndex: 1201,
+          }}
+        >
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
+      )}
     </Box>
   );
 };
